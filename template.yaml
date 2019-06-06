@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+# above two lines necessary to convert SAM template to CloudFormation template
+Description: Resource definitions for the get_cats app
+Globals: # any parameters you want available to all your resources
+    Function:
+        Runtime: python3.7 # language used at runtime
+        Timeout: 180 # timeout for a given lambda function execution
+        Environment:
+            Variables: # these will be important later
+                DYNAMO_TABLE: !Ref DynamoMovieTable
+                DB_ENDPOINT: http://dynamodb.eu-west-1.amazonaws.com
+                REGION_NAME: eu-west-1
+Resources:
+    GetBreedFunction: # the resource’s logical name
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: handlers.py
+            Handler: handlers.get_data_handler # the path to the lambda handler code
+            Policies: AmazonDynamoDBFullAccess
+            Events:
+                Api: # This lambda is triggered by a request to the API Gateway Endpoint /get-breed
+                    Type: Api
+                    Properties:
+                        Path: /get-breed
+                        Method: get
+    PostBreedDataFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: handlers.py
+            Handler: handlers.post_data_handler
+            Policies: AmazonDynamoDBFullAccess
+            Events:
+                Api:
+                    Type: Api
+                    Properties:
+                        Path: /post-breed
+                        Method: post
+    DynamoMovieTable:
+        Type: AWS::Serverless::SimpleTable # if you want to define a more complex table, use AWS::DynamoDB::Table
+        TableName: catBreedTable
+        PrimaryKey:
+            Name: breedId
+            Type: String
+        ProvisionedThroughput:
+            ReadCapacityUnit: 5
+            WriteCapacityUnits: 5
+        Tags:
+            AppType: Serverless
+    DeleteBreedTableFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            CodeUri: handlers.py
+            Handler: handlers.delete_tables_handler
+            Policies: AmazonDynamoDBFullAccess
+        Events:
+            Timer:
+                Type: Schedule
+                Properties:
+                    # Schedule: cron(0 4 * * ? *) # will run once a day at midnight
+            Api: # Note: you can define multiple events that will trigger the lambda execution
+                Type: Api
+                Properties:
+                    Path: /delete-cache
+                    Method: post
+    FrontendS3BucketDev:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: alno-cat-breeds-frontend-bucket
+            WebsiteConfiguration:
+                IndexDocument: index.html
+                ErrorDocument: index.html
+            VersioningConfiguration:
+                Status: Enabled
+        DeletionPolicy: Retain
+    S3FrontendBucketPolicy: # define a managed (managed by the user) policy that makes the bucket readable.
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref FrontendS3BucketDev # a reference to the bucket defined above
+            PolicyDocument:
+                Statement:
+                    -
+                      Action:
+                          - "s3:GetObject"
+                      Effect: "Allow"
+                      Resource:
+                          - !Join # this is essentially a string join
+                            - ''
+                            - - 'arn:aws:s3:::'
+                              - !Ref FrontendS3BucketDev
+                              - '/*'
+                      Principal: '*'
+    # StatsFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         CodeUri: 's3://cat-app-stack/functions.zip'
+    #         Handler: handlers.stats_handler
+    #         Policies: # default (provided by AWS) IAM policies
+    #             - CloudWatchLogsFullAccess
+    #             - AmazonSESFullAccess
+    #         Events:
+    #             Timer:
+    #                 Type: Schedule
+    #                 Properties:
+    #                     Schedule: cron(0 4 * * ? *)
