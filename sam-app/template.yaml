@@ -3,8 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 # above two lines necessary to convert SAM template to CloudFormation template
 Description: Resource definitions for the get_cats app
 Globals: # any parameters you want available to all your resources
-    Function:
-        Runtime: python3.7 # language used at runtime
+    Function:        
         Timeout: 180 # timeout for a given lambda function execution
         Environment:
             Variables: # these will be important later
@@ -15,8 +14,9 @@ Resources:
     GetBreedFunction: # the resource’s logical name
         Type: AWS::Serverless::Function
         Properties:
-            CodeUri: handlers.py
-            Handler: handlers.get_data_handler # the path to the lambda handler code
+            Runtime: nodejs8.10
+            CodeUri: get-breed/
+            Handler: app.lambdaHandler # the path to the lambda handler code
             Policies: AmazonDynamoDBFullAccess
             Events:
                 Api: # This lambda is triggered by a request to the API Gateway Endpoint /get-breed
@@ -27,8 +27,9 @@ Resources:
     PostBreedDataFunction:
         Type: AWS::Serverless::Function
         Properties:
-            CodeUri: handlers.py
-            Handler: handlers.post_data_handler
+            Runtime: nodejs8.10
+            CodeUri: post-breed/
+            Handler: app.lambdaHandler
             Policies: AmazonDynamoDBFullAccess
             Events:
                 Api:
@@ -38,20 +39,22 @@ Resources:
                         Method: post
     DynamoMovieTable:
         Type: AWS::Serverless::SimpleTable # if you want to define a more complex table, use AWS::DynamoDB::Table
-        TableName: catBreedTable
-        PrimaryKey:
-            Name: breedId
-            Type: String
-        ProvisionedThroughput:
-            ReadCapacityUnit: 5
-            WriteCapacityUnits: 5
-        Tags:
-            AppType: Serverless
+        Properties:
+            TableName: catBreedTable
+            PrimaryKey:
+                Name: id
+                Type: String
+            ProvisionedThroughput:
+                ReadCapacityUnits: 5
+                WriteCapacityUnits: 5
+            Tags:
+                AppType: Serverless
     DeleteBreedTableFunction:
         Type: AWS::Serverless::Function
         Properties:
-            CodeUri: handlers.py
-            Handler: handlers.delete_tables_handler
+            Runtime: nodejs8.10
+            CodeUri: delete-breed/
+            Handler: app.lambdaHandler
             Policies: AmazonDynamoDBFullAccess
         Events:
             Timer:
@@ -90,16 +93,3 @@ Resources:
                               - !Ref FrontendS3BucketDev
                               - '/*'
                       Principal: '*'
-    # StatsFunction:
-    #     Type: AWS::Serverless::Function
-    #     Properties:
-    #         CodeUri: 's3://cat-app-stack/functions.zip'
-    #         Handler: handlers.stats_handler
-    #         Policies: # default (provided by AWS) IAM policies
-    #             - CloudWatchLogsFullAccess
-    #             - AmazonSESFullAccess
-    #         Events:
-    #             Timer:
-    #                 Type: Schedule
-    #                 Properties:
-    #                     Schedule: cron(0 4 * * ? *)

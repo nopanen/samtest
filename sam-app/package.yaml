@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Resource definitions for the get_cats app
+Globals:
+  Function:
+    Timeout: 180
+    Environment:
+      Variables:
+        DYNAMO_TABLE:
+          Ref: DynamoMovieTable
+        DB_ENDPOINT: http://dynamodb.eu-west-1.amazonaws.com
+        REGION_NAME: eu-west-1
+Resources:
+  GetBreedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs8.10
+      CodeUri: s3://alno-cat-app-stack/05430c8a68978798d132910894c43e3d
+      Handler: app.lambdaHandler
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /get-breed
+            Method: get
+  PostBreedDataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs8.10
+      CodeUri: s3://alno-cat-app-stack/63427a35bc119ceb523094d2d4fe07be
+      Handler: app.lambdaHandler
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /post-breed
+            Method: post
+  DynamoMovieTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: catBreedTable
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      Tags:
+        AppType: Serverless
+  DeleteBreedTableFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs8.10
+      CodeUri: s3://alno-cat-app-stack/05430c8a68978798d132910894c43e3d
+      Handler: app.lambdaHandler
+      Policies: AmazonDynamoDBFullAccess
+    Events:
+      Timer:
+        Type: Schedule
+        Properties: null
+      Api:
+        Type: Api
+        Properties:
+          Path: /delete-cache
+          Method: post
+  FrontendS3BucketDev:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: alno-cat-breeds-frontend-bucket
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      VersioningConfiguration:
+        Status: Enabled
+    DeletionPolicy: Retain
+  S3FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: FrontendS3BucketDev
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: FrontendS3BucketDev
+              - /*
+          Principal: '*'
