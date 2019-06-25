@@ -71,8 +71,8 @@ Resources:
         Properties:
             BucketName: alno-cat-breeds-frontend-bucket
             WebsiteConfiguration:
-                IndexDocument: index.html
-                ErrorDocument: index.html
+                IndexDocument: /frontend/public/index.html
+                ErrorDocument: /frontend/public/index.html
             VersioningConfiguration:
                 Status: Enabled
         DeletionPolicy: Retain
